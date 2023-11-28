@@ -11,11 +11,13 @@ contract Lottery {
     //payable addresses are the addresses to which you can send the ether to
     //declare a manager; and externalyl owned accoun that deploys the contract 
     address public owner_mgr;
+    uint public something;
     //implement functionality of manager 
     
     constructor()
     {
         owner_mgr=msg.sender;
+        something = 1;
         //msg.sender is a global variable in solidity
         //constructor will be called only once automatically when the contract is deployed
     }
@@ -39,13 +41,11 @@ contract Lottery {
         players.push(payable(msg.sender));
         //we rcv the money and we add the sender of that money in the players array
     }
-
     function getBalance()public view returns (uint)
     {
         require(msg.sender==owner_mgr);
         return address(this).balance;
         //becuase we only want the owner to view the balance
-
     }
     //Since Solidity 0.8, an address is not payable by default (source: docs). So if you want to send them the native currency (in case of Ethereum, that's ETH), you need to cast the address to payable first.
     //warning:: this is definitley insecure way of genearting random number dont put this in prod.
@@ -53,8 +53,7 @@ contract Lottery {
     {
         return uint(keccak256(abi.encodePacked(block.difficulty,block.timestamp,players.length)));
     }
-
-    function pick_winner(address payable[] memory) public returns(address){
+    function pick_winner() public returns(address){
         //only owner can call this access checks 
         require(msg.sender==owner_mgr);
         //additional check for atleast 3 players
@@ -66,15 +65,12 @@ contract Lottery {
         address payable winner = players[indi];
         //return winner;
         //return here if you want to limit it for one time usage 
-
         winner.transfer(getBalance());
         //resetting the array / clearing the array for next round 
         players = new address payable[](0);
         //bhai isme elaboration chaiye - how this is resetting 
         return winner; 
-
     }
-
 }
 
 //what to learn more ?
