@@ -28,28 +28,43 @@ contract auction{
         bidIncrement= 100; // here the SI unit of this 100 is wei, for other unit such as ether you have to explicilty mention that ahead of value like 100 ether
 
     }
-    modifier onlyOwner()
-    {
+    modifier onlyOwner(){
         require(owner==msg.sender);
         _;
     }
     modifier notOwner(){
-        require(msg.sender!=owner);
+        require(msg.sender!=owner,"owner can not placebid");
         _;
     }
     modifier afterStart(){
         require(block.number>=start_date);
         _;
     }
-
     modifier beforeEnd(){
         require(block.number<=end_date);
         _;
     }
+    function min(uint a, uint b) internal pure returns (uint) {
+    if (a < b) {
+        return a;
+    } else {
+        return b;
+    }
+}
     function placeBid() public payable notOwner afterStart beforeEnd {
-        require(msg.value>=100);
+        require(msg.value>=100); // ps. the SI unit for currecny is wei here 
         require(auctionState==State.Running);// why are we doing this ? isn't this redundnant and unneccasry with afterStart beforeEnd
         
+        uint currentBid = bids[msg.sender]+msg.value;
+        require(currentBid>highestBindingBid);
+        bids[msg.sender]=currentBid;
+        if (currentBid<=bids[highestBidder]){
+            highestBindingBid = min(currentBid+bidIncrement, bids[highestBidder]);
+        }
+        else{
+            highestBindingBid = min(currentBid, bids[highestBidder] + bidIncrement);
+            highestBidder=payable(msg.sender);
+        }
     }
 }
 
