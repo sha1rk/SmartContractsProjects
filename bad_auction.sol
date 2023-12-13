@@ -28,45 +28,100 @@ contract auction{
         bidIncrement= 100; // here the SI unit of this 100 is wei, for other unit such as ether you have to explicilty mention that ahead of value like 100 ether
 
     }
-    modifier onlyOwner(){
-        require(owner==msg.sender);
+    modifier onlyOwner()
+    {
+        require(owner==msg.sender, "sorry you are not the owner !!");
         _;
     }
-    modifier notOwner(){
+    modifier notOwner()
+    {
         require(msg.sender!=owner,"owner can not placebid");
         _;
     }
-    modifier afterStart(){
-        require(block.number>=start_date);
+    modifier afterStart()
+    {
+        require(block.number>=start_date, "oopss the current block is before start date");
         _;
     }
-    modifier beforeEnd(){
-        require(block.number<=end_date);
+    modifier beforeEnd()
+    {
+        require(block.number<=end_date, "ooppss the current block is after end date");
         _;
     }
-    function min(uint a, uint b) internal pure returns (uint) {
-    if (a < b) {
-        return a;
-    } else {
-        return b;
+    function min(uint a, uint b) internal pure returns (uint) 
+    {
+        if (a < b) 
+        {
+            return a;
+        } 
+        else 
+        {
+            return b;
+        }
     }
-}
-    function placeBid() public payable notOwner afterStart beforeEnd {
+    function emergency() public onlyOwner 
+    {
+        auctionState = State.Cancelled;
+        //do something more here if you want to ; 
+    }
+    //withdrawl function with checking the state cacnelled or ended and the amout that was bidded by the requestor 
+
+    function placeBid() public payable notOwner afterStart beforeEnd 
+    {
         require(msg.value>=100); // ps. the SI unit for currecny is wei here 
-        require(auctionState==State.Running);// why are we doing this ? isn't this redundnant and unneccasry with afterStart beforeEnd
-        
+        require(auctionState==State.Running, "sorry the auction is not Running(may be it is cancelled)");// why are we doing this ? isn't this redundnant and unneccasry with afterStart beforeEnd
+        // we are doing this becuase in case of emergency cancellation of the auction the start and end date checks would betrue but the auction state would be cnacelled.
+
         uint currentBid = bids[msg.sender]+msg.value;
         require(currentBid>highestBindingBid);
         bids[msg.sender]=currentBid;
-        if (currentBid<=bids[highestBidder]){
+        if (currentBid<=bids[highestBidder])
+        {
             highestBindingBid = min(currentBid+bidIncrement, bids[highestBidder]);
         }
-        else{
+        else
+        {
             highestBindingBid = min(currentBid, bids[highestBidder] + bidIncrement);
             highestBidder=payable(msg.sender);
         }
     }
+
+    function finalizeAuction () public
+    {
+        require(auctionState == State.Cancelled || block.number > end_date);
+        require(msg.sender == owner || bids [msg.sender] > 0);
+        address payable recipient;
+        uint value;
+        if(auctionState==State.Cancelled)
+        { // auction was canceled
+            recipient = payable (msg.sender);
+            value = bids [msg.sender];
+        }
+        else
+        { // auction ended (not canceled)
+            if(msg.sender == owner) 
+            { // this is the owner
+                recipient = owner;
+                value = highestBindingBid;
+            }
+        else
+        { //this is a bidder
+            if(msg.sender == highestBidder)
+            {
+                recipient = highestBidder;
+                value = bids [highestBidder] - highestBindingBid;
+            }
+            else
+            { // this is neither the owner nor the highest Bidder
+                recipient = payable(msg.sender);
+            }
+            }
+        }
+        recipient.transfer(value);
+    }
+
 }
+
 
 
 /*
